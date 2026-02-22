@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContentAI — Generator Konten & Video</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #ff3d5a;
+    --accent2: #7c3aed;
+    --accent3: #06d6a0;
+    --text: #f0f0ff;
+    --muted: #6b6b8a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background: radial-gradient(ellipse 60% 50% at 10% 10%, rgba(124,58,237,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 90% 80%, rgba(255,61,90,0.1) 0%, transparent 60%);
+  }
+  .container { max-width:960px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+
+  /* Header */
+  header { padding:28px 0 20px; display:flex; align-items:center; justify-content:space-between; }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.5rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .badge { background:linear-gradient(135deg,rgba(255,61,90,0.2),rgba(124,58,237,0.2));
+    border:1px solid rgba(255,61,90,0.3); padding:4px 12px; border-radius:20px; font-size:0.75rem; color:var(--accent); }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:4px; margin:24px 0; }
+  .tab { flex:1; padding:10px; border:none; background:none; color:var(--muted); font-family:'DM Sans',sans-serif;
+    font-size:0.9rem; font-weight:500; cursor:pointer; border-radius:10px; transition:all 0.2s; }
+  .tab.active { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white; font-weight:600; }
+
+  /* Tab Content */
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* Form Card */
+  .form-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px; margin-bottom:20px; }
+  .form-card h2 { font-family:'Syne',sans-serif; font-size:1.1rem; margin-bottom:20px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .form-group { display:flex; flex-direction:column; gap:7px; }
+  .form-group.full { grid-column:1/-1; }
+  label { font-size:0.8rem; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+  input,textarea,select { background:var(--bg); border:1px solid var(--border); border-radius:10px;
+    padding:11px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:0.9rem; outline:none;
+    transition:border-color 0.2s; width:100%; }
+  input:focus,textarea:focus,select:focus { border-color:var(--accent2); }
+  textarea { resize:vertical; min-height:75px; }
+  select option { background:var(--surface); }
+
+  /* Platform toggle */
+  .platform-row { display:flex; gap:10px; }
+  .platform-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    padding:10px; border-radius:11px; border:2px solid var(--border); background:var(--surface2);
+    color:var(--muted); font-family:'DM Sans',sans-serif; font-size:0.9rem; cursor:pointer; transition:all 0.2s; }
+  .platform-btn.active { border-color:#ff3d5a; color:#ff3d5a; background:rgba(255,61,90,0.1); }
+  .platform-btn:hover { transform:translateY(-1px); }
+
+  /* Video mode selector */
+  .video-modes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .video-mode { border:2px solid var(--border); border-radius:14px; padding:16px; cursor:pointer;
+    transition:all 0.2s; background:var(--surface2); }
+  .video-mode:hover { border-color:var(--accent2); }
+  .video-mode.selected { border-color:var(--accent2); background:rgba(124,58,237,0.1); }
+  .vm-icon { font-size:1.8rem; margin-bottom:8px; }
+  .vm-title { font-family:'Syne',sans-serif; font-size:0.95rem; font-weight:700; margin-bottom:4px; }
+  .vm-desc { font-size:0.78rem; color:var(--muted); line-height:1.4; }
+  .vm-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; margin-top:6px; }
+  .vm-badge.free { background:rgba(6,214,160,0.15); color:var(--accent3); border:1px solid rgba(6,214,160,0.3); }
+  .vm-badge.paid { background:rgba(255,61,90,0.15); color:var(--accent); border:1px solid rgba(255,61,90,0.3); }
+
+  /* API key input */
+  .api-key-section { background:rgba(255,193,7,0.05); border:1px solid rgba(255,193,7,0.2);
+    border-radius:12px; padding:14px 16px; margin-bottom:14px; display:none; }
+  .api-key-section.show { display:block; }
+  .api-key-section p { font-size:0.8rem; color:#ffd166; margin-bottom:8px; }
+
+  /* Checklist */
+  .opts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+  .opt-check { display:flex; align-items:center; gap:7px; padding:9px 12px;
+    background:var(--bg); border:1px solid var(--border); border-radius:10px;
+    cursor:pointer; transition:all 0.2s; font-size:0.83rem; }
+  .opt-check input { width:auto; }
+  .opt-check:has(input:checked) { border-color:var(--accent2); background:rgba(124,58,237,0.1); color:#a78bfa; }
+
+  /* Generate btn */
+  .gen-btn { width:100%; padding:15px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border:none; border-radius:14px; color:white; font-family:'Syne',sans-serif; font-size:1.05rem;
+    font-weight:700; cursor:pointer; transition:all 0.3s; margin-top:18px; }
+  .gen-btn:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(255,61,90,0.35); }
+  .gen-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+  /* Error */
+  .error-msg { background:rgba(255,61,90,0.1); border:1px solid rgba(255,61,90,0.3); color:#ff8fa3;
+    padding:14px 18px; border-radius:12px; margin-top:14px; display:none; font-size:0.9rem; }
+  .error-msg.show { display:block; }
+
+  /* Loading */
+  .loading { display:none; text-align:center; padding:40px; color:var(--muted); }
+  .loading.show { display:block; }
+  .spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent);
+    border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .progress-steps { display:flex; flex-direction:column; gap:8px; max-width:300px; margin:16px auto 0; text-align:left; }
+  .step { display:flex; align-items:center; gap:10px; font-size:0.85rem; opacity:0.4; transition:opacity 0.3s; }
+  .step.active { opacity:1; color:var(--accent3); }
+  .step.done { opacity:0.7; }
+  .step-dot { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+  /* Results */
+  .results { display:none; }
+  .results.show { display:block; }
+  .result-section { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    margin-bottom:14px; overflow:hidden; animation:fadeUp 0.4s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .result-section:nth-child(2){animation-delay:0.1s}
+  .result-section:nth-child(3){animation-delay:0.2s}
+  .result-section:nth-child(4){animation-delay:0.3s}
+  .result-section:nth-child(5){animation-delay:0.4s}
+  .result-section:nth-child(6){animation-delay:0.5s}
+  .result-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px;
+    background:var(--surface2); border-bottom:1px solid var(--border); }
+  .result-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem;
+    display:flex; align-items:center; gap:8px; }
+  .copy-btn { background:var(--bg); border:1px solid var(--border); padding:5px 12px; border-radius:8px;
+    color:var(--muted); font-size:0.78rem; cursor:pointer; transition:all 0.2s; font-family:'DM Sans',sans-serif; }
+  .copy-btn:hover, .copy-btn.copied { border-color:var(--accent3); color:var(--accent3); }
+  .result-body { padding:18px; line-height:1.7; white-space:pre-wrap; font-size:0.9rem; }
+
+  /* Title list */
+  .title-options { padding:16px; display:flex; flex-direction:column; gap:9px; }
+  .title-option { background:var(--bg); border:1px solid var(--border); border-radius:10px;
+    padding:11px 14px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:10px; }
+  .title-option:hover { border-color:var(--accent2); background:rgba(124,58,237,0.08); }
+  .title-num { width:22px; height:22px; background:var(--accent2); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; flex-shrink:0; }
+
+  /* Hashtag */
+  .hashtag-cloud { display:flex; flex-wrap:wrap; gap:7px; padding:16px; }
+  .hashtag { background:rgba(124,58,237,0.15); border:1px solid rgba(124,58,237,0.3); color:#a78bfa;
+    padding:5px 11px; border-radius:20px; font-size:0.82rem; cursor:pointer; transition:all 0.2s; }
+  .hashtag:hover { background:rgba(124,58,237,0.3); }
+
+  /* Storyboard */
+  .storyboard-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; padding:16px; }
+  .sb-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; text-align:center; }
+  .sb-frame { height:82px; display:flex; align-items:center; justify-content:center; font-size:1.8rem; background:var(--surface2); }
+  .sb-info { padding:8px; }
+  .sb-time { font-size:0.68rem; color:var(--accent); font-weight:600; margin-bottom:3px; }
+  .sb-desc { font-size:0.72rem; color:var(--muted); line-height:1.3; }
+
+  /* Video result */
+  .video-result { padding:20px; }
+  .video-container { border-radius:12px; overflow:hidden; background:#000; margin-bottom:14px; }
+  video { width:100%; max-height:400px; display:block; }
+  .video-processing { background:var(--surface2); border:2px dashed var(--border); border-radius:12px;
+    padding:30px; text-align:center; color:var(--muted); }
+  .video-processing .big-icon { font-size:3rem; margin-bottom:12px; }
+  .video-processing h3 { font-family:'Syne',sans-serif; font-size:1rem; margin-bottom:8px; color:var(--text); }
+  .download-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px;
+    background:var(--accent3); color:var(--bg); border:none; border-radius:10px; font-family:'Syne',sans-serif;
+    font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s; text-decoration:none; }
+  .download-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(6,214,160,0.3); }
+
+  /* Script scene */
+  .script-scene { border-left:3px solid var(--accent2); padding-left:14px; margin-bottom:18px; }
+  .scene-label { font-size:0.72rem; font-weight:700; color:var(--accent2); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:5px; }
+  .scene-visual { font-size:0.78rem; color:var(--muted); font-style:italic; margin-bottom:5px; }
+
+  /* Slideshow preview */
+  .slideshow-preview { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+  .slide-card { background:linear-gradient(135deg,#1a1a2e,#16213e); border:1px solid var(--border);
+    border-radius:12px; aspect-ratio:9/16; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding:16px; text-align:center; position:relative; overflow:hidden; }
+  .slide-card::before { content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(255,61,90,0.2)); }
+  .slide-emoji { font-size:2.5rem; margin-bottom:10px; position:relative; z-index:1; }
+  .slide-text { font-size:0.75rem; line-height:1.4; position:relative; z-index:1; }
+  .slide-time { position:absolute; bottom:8px; right:8px; font-size:0.65rem; color:var(--accent); font-weight:600; }
+
+  @media(max-width:640px) {
+    .form-grid { grid-template-columns:1fr; }
+    .opts-grid { grid-template-columns:1fr 1fr; }
+    .video-modes { grid-template-columns:1fr; }
+    .storyboard-grid,.slideshow-preview { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">ContentAI</div>
+    <div class="badge">⚡ Powered by Claude AI</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('content')">📝 Generate Konten</button>
+    <button class="tab" onclick="switchTab('video')">🎬 Generate Video</button>
+  </div>
+
+  <!-- ===== TAB 1: CONTENT ===== -->
+  <div class="tab-content active" id="tab-content">
+    <div class="form-card">
+      <h2>✨ Buat Konten Otomatis</h2>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Platform</label>
+        <div class="platform-row">
+          <button class="platform-btn active" id="btnYT" onclick="setPlatform('youtube')">▶️ YouTube</button>
+          <button class="platform-btn" id="btnTT" onclick="setPlatform('tiktok')">🎵 TikTok</button>
+          <button class="platform-btn" id="btnBoth" onclick="setPlatform('both')">🔥 Keduanya</button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Topik / Ide Konten *</label>
+          <textarea id="topic" placeholder="Contoh: Tips hemat uang untuk mahasiswa, Tutorial memasak nasi goreng..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Niche</label>
+          <select id="niche">
+            <option value="umum">Umum</option>
+            <option value="edukasi">Edukasi</option>
+            <option value="hiburan">Hiburan</option>
+            <option value="teknologi">Teknologi</option>
+            <option value="kuliner">Kuliner / Food</option>
+            <option value="lifestyle">Lifestyle</option>
+            <option value="gaming">Gaming</option>
+            <option value="keuangan">Keuangan</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="travel">Travel</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Durasi</label>
+          <select id="duration">
+            <option value="15-30 detik">15-30 detik (Shorts/TikTok)</option>
+            <option value="1-3 menit">1-3 menit</option>
+            <option value="5-10 menit" selected>5-10 menit</option>
+            <option value="10-20 menit">10-20 menit</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Gaya Konten</label>
+          <select id="style">
+            <option value="informatif">Informatif / Edukatif</option>
+            <option value="entertaining">Entertaining / Lucu</option>
+            <option value="tutorial">Tutorial / How-to</option>
+            <option value="review">Review / Opini</option>
+            <option value="listicle">List (Top 5, Top 10...)</option>
+            <option value="motivasi">Motivasi</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Target Audiens</label>
+          <input type="text" id="audience" placeholder="Contoh: Mahasiswa 18-25 tahun">
+        </div>
+        <div class="form-group">
+          <label>Bahasa</label>
+          <select id="language">
+            <option value="Indonesia">🇮🇩 Indonesia</option>
+            <option value="Inggris">🇬🇧 Inggris</option>
+            <option value="Indonesia + sedikit Inggris">Campur (Indo + Eng)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Generate Apa?</label>
+        <div class="opts-grid">
+          <label class="opt-check"><input type="checkbox" id="opt-hook" checked> ⚡ Hook Pembuka</label>
+          <label class="opt-check"><input type="checkbox" id="opt-title" checked> 🎯 Judul Menarik</label>
+          <label class="opt-check"><input type="checkbox" id="opt-desc" checked> 📝 Deskripsi</label>
+          <label class="opt-check"><input type="checkbox" id="opt-script" checked> 🎬 Script Lengkap</label>
+          <label class="opt-check"><input type="checkbox" id="opt-storyboard" checked> 🖼️ Storyboard</label>
+          <label class="opt-check"><input type="checkbox" id="opt-hashtag" checked> #️⃣ Hashtag</label>
+        </div>
+      </div>
+      <button class="gen-btn" id="contentBtn" onclick="generateContent()">✨ Generate Konten</button>
+      <div class="error-msg" id="contentError"></div>
+    </div>
+
+    <div class="loading" id="contentLoading">
+      <div class="spinner"></div>
+      <p>AI sedang membuat konten...</p>
+      <div class="progress-steps" id="contentSteps">
+        <div class="step active" id="cstep1"><div class="step-dot"></div>Menganalisis topik</div>
+        <div class="step" id="cstep2"><div class="step-dot"></div>Membuat script & judul</div>
+        <div class="step" id="cstep3"><div class="step-dot"></div>Menyusun storyboard</div>
+        <div class="step" id="cstep4"><div class="step-dot"></div>Generate hashtag & deskripsi</div>
+      </div>
+    </div>
+
+    <div class="results" id="contentResults"></div>
+  </div>
+
+  <!-- ===== TAB 2: VIDEO ===== -->
+  <div class="tab-content" id="tab-video">
+    <div class="form-card">
+      <h2>🎬 Pilih Mode Generate Video</h2>
+      <div class="video-modes">
+        <div class="video-mode selected" id="mode-slideshow" onclick="setVideoMode('slideshow')">
+          <div class="vm-icon">🖼️</div>
+          <div class="vm-title">Slideshow Video</div>
+          <div class="vm-desc">Gambar + teks + musik otomatis digabung jadi video MP4. Cocok untuk konten edukatif.</div>
+          <span class="vm-badge free">✅ GRATIS</span>
+        </div>
+        <div class="video-mode" id="mode-runway" onclick="setVideoMode('runway')">
+          <div class="vm-icon">🚀</div>
+          <div class="vm-title">AI Video (RunwayML)</div>
+          <div class="vm-desc">Generate video cinematic berkualitas tinggi dari deskripsi teks. Butuh API Key RunwayML.</div>
+          <span class="vm-badge paid">💳 BERBAYAR</span>
+        </div>
+      </div>
+
+      <div class="api-key-section" id="runwayKeySection">
+        <p>⚠️ Kamu perlu API Key dari <a href="https://runwayml.com" target="_blank" style="color:#ffd166">runwayml.com</a> (daftar gratis, lalu beli kredit)</p>
+        <div class="form-group">
+          <label>RunwayML API Key</label>
+          <input type="password" id="runwayKey" placeholder="key_xxxxxxxxxxxxxxxx">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Deskripsi Video / Topik *</label>
+          <textarea id="videoTopic" placeholder="Contoh: Video motivasi tentang kerja keras, Konten edukasi cara menabung..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Jumlah Scene / Slide</label>
+          <select id="sceneCount">
+            <option value="4">4 scene (video pendek)</option>
+            <option value="6" selected>6 scene (standar)</option>
+            <option value="8">8 scene (video panjang)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rasio Layar</label>
+          <select id="aspectRatio">
+            <option value="9:16">9:16 — TikTok / Shorts (vertikal)</option>
+            <option value="16:9">16:9 — YouTube (horizontal)</option>
+            <option value="1:1">1:1 — Instagram Square</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Gaya Visual</label>
+          <select id="visualStyle">
+            <option value="modern minimalist">Modern Minimalist</option>
+            <option value="colorful energetic">Colorful Energetic</option>
+            <option value="dark premium">Dark Premium</option>
+            <option value="pastel soft">Pastel Soft</option>
+            <option value="cinematic">Cinematic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Durasi per Scene</label>
+          <select id="sceneDuration">
+            <option value="3">3 detik</option>
+            <option value="5" selected>5 detik</option>
+            <option value="7">7 detik</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bahasa Teks Video</label>
+          <select id="videoLang">
+            <option value="Indonesia">🇮🇩 Indonesia</option>
+            <option value="Inggris">🇬🇧 Inggris</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="gen-btn" id="videoBtn" onclick="generateVideo()">🎬 Generate Video</button>
+      <div class="error-msg" id="videoError"></div>
+    </div>
+
+    <div class="loading" id="videoLoading">
+      <div class="spinner"></div>
+      <p id="videoLoadingText">Membuat video...</p>
+      <div class="progress-steps" id="videoSteps">
+        <div class="step active" id="vstep1"><div class="step-dot"></div>Merancang konten tiap scene</div>
+        <div class="step" id="vstep2"><div class="step-dot"></div>Generate storyboard visual</div>
+        <div class="step" id="vstep3"><div class="step-dot"></div>Membuat preview slide</div>
+        <div class="step" id="vstep4"><div class="step-dot"></div>Menyusun panduan produksi</div>
+      </div>
+    </div>
+
+    <div class="results" id="videoResults"></div>
+  </div>
+
+  <div style="height:60px"></div>
+</div>
+
+<script>
+// ===== STATE =====
+let platform = 'youtube';
+let videoMode = 'slideshow';
+
+// ===== UI HELPERS =====
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', i === (t==='content'?0:1)));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+}
+
+function setPlatform(p) {
+  platform = p;
+  ['YT','TT','Both'].forEach(id => document.getElementById('btn'+id).classList.remove('active'));
+  const map = {youtube:'YT',tiktok:'TT',both:'Both'};
+  document.getElementById('btn'+map[p]).classList.add('active');
+  if (p==='tiktok') document.getElementById('duration').value='15-30 detik';
+  else if (p==='youtube') document.getElementById('duration').value='5-10 menit';
+}
+
+function setVideoMode(m) {
+  videoMode = m;
+  document.getElementById('mode-slideshow').classList.toggle('selected', m==='slideshow');
+  document.getElementById('mode-runway').classList.toggle('selected', m==='runway');
+  document.getElementById('runwayKeySection').classList.toggle('show', m==='runway');
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Disalin!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 6000);
+}
+
+// Progress animation
+function animateSteps(prefix, steps, delay=600) {
+  steps.forEach((id, i) => {
+    setTimeout(() => {
+      if(i > 0) document.getElementById(prefix+(i)).classList.replace('active','done');
+      document.getElementById(prefix+(i+1)).classList.add('active');
+    }, i * delay);
+  });
+}
+
+// ===== CLAUDE API =====
+async function callClaude(prompt, maxTokens=3000) {
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ prompt, max_tokens: maxTokens })
+  });
+  if (!res.ok) throw new Error('API error: '+res.status);
+  const data = await res.json();
+  return data.text || '';
+}
+
+function extractSection(text, header) {
+  const r = new RegExp(`###\\s*${header}[^\\n]*\\n([\\s\\S]*?)(?=###|$)`, 'i');
+  const m = text.match(r);
+  return m ? m[1].trim() : null;
+}
+
+// ===== GENERATE CONTENT =====
+async function generateContent() {
+  const topic = document.getElementById('topic').value.trim();
+  if (!topic) { showError('contentError', '⚠️ Isi topik dulu!'); return; }
+
+  const niche = document.getElementById('niche').value;
+  const duration = document.getElementById('duration').value;
+  const style = document.getElementById('style').value;
+  const audience = document.getElementById('audience').value || 'umum';
+  const language = document.getElementById('language').value;
+  const platLabel = platform==='both'?'YouTube dan TikTok':platform==='youtube'?'YouTube':'TikTok';
+  const opts = {
+    hook: document.getElementById('opt-hook').checked,
+    title: document.getElementById('opt-title').checked,
+    desc: document.getElementById('opt-desc').checked,
+    script: document.getElementById('opt-script').checked,
+    storyboard: document.getElementById('opt-storyboard').checked,
+    hashtag: document.getElementById('opt-hashtag').checked,
+  };
+
+  document.getElementById('contentBtn').disabled = true;
+  document.getElementById('contentLoading').classList.add('show');
+  document.getElementById('contentResults').classList.remove('show');
+  document.getElementById('contentResults').innerHTML = '';
+  animateSteps('cstep', [1,2,3,4]);
+
+  const parts = [];
+  if(opts.hook) parts.push(`\n### HOOK PEMBUKA:\nBuat 3-5 kalimat hook pembuka yang memancing penasaran dan membuat orang tidak mau skip.`);
+  if(opts.title) parts.push(`\n### 5 PILIHAN JUDUL:\nBuat 5 judul berbeda (clickbait, informatif, emosional, listicle, pertanyaan). Tiap judul di baris baru diawali angka.`);
+  if(opts.desc) parts.push(`\n### DESKRIPSI VIDEO:\nTulis deskripsi 200-300 kata, SEO-friendly, ada keyword dan CTA.`);
+  if(opts.script) parts.push(`\n### SCRIPT VIDEO LENGKAP:\nTulis script per scene:\n[SCENE X - waktu]\nVISUAL: [deskripsi visual]\nNARASI: [teks ucapan]\nSertakan intro, isi utama (3-5 poin), dan outro.`);
+  if(opts.storyboard) parts.push(`\n### STORYBOARD JSON:\nBuat JSON array 6-8 scene:\n[{"scene":1,"time":"0:00-0:15","emoji":"🎬","visual":"deskripsi visual","narasi":"narasi singkat"}]\nHanya output JSON murni dari [ sampai ]`);
+  if(opts.hashtag) parts.push(`\n### HASHTAG:\n20 hashtag relevan format: #tag1 #tag2 ...`);
+
+  const prompt = `Kamu content creator profesional untuk ${platLabel}. Buat konten bahasa ${language}:
+Topik: ${topic} | Niche: ${niche} | Durasi: ${duration} | Gaya: ${style} | Audiens: ${audience} | Platform: ${platLabel}
+${parts.join('\n')}
+Buat konten yang menarik, viral-worthy, sesuai platform.`;
+
+  try {
+    const text = await callClaude(prompt);
+    renderContent(text, opts);
+  } catch(e) {
+    showError('contentError', '❌ '+e.message);
+  } finally {
+    document.getElementById('contentBtn').disabled = false;
+    document.getElementById('contentLoading').classList.remove('show');
+  }
+}
+
+function renderContent(text, opts) {
+  const c = document.getElementById('contentResults');
+  c.innerHTML = '';
+
+  if(opts.hook) {
+    const v = extractSection(text,'HOOK PEMBUKA');
+    if(v) c.innerHTML += buildSection('⚡','Hook Pembuka', `<div class="result-body" style="color:#ffd166;font-size:1rem">${v}</div>`, v);
+  }
+  if(opts.title) {
+    const v = extractSection(text,'5 PILIHAN JUDUL') || extractSection(text,'PILIHAN JUDUL');
+    if(v) {
+      const lines = v.split('\n').filter(l=>l.trim()&&/^\d/.test(l.trim()));
+      let html = '<div class="title-options">';
+      lines.forEach((l,i) => {
+        const clean = l.replace(/^\d+[\.\)]\s*/,'').trim();
+        html += `<div class="title-option" onclick="copyText('${clean.replace(/'/g,"\\'")}',this)"><span class="title-num">${i+1}</span><span style="flex:1">${clean}</span><span style="color:var(--muted);font-size:0.75rem">klik salin</span></div>`;
+      });
+      html += '</div>';
+      c.innerHTML += buildSection('🎯','Pilihan Judul', html, null, false);
+    }
+  }
+  if(opts.desc) {
+    const v = extractSection(text,'DESKRIPSI VIDEO');
+    if(v) c.innerHTML += buildSection('📝','Deskripsi Video', `<div class="result-body">${v}</div>`, v);
+  }
+  if(opts.script) {
+    const v = extractSection(text,'SCRIPT VIDEO LENGKAP') || extractSection(text,'SCRIPT');
+    if(v) {
+      const scenes = v.split(/\[SCENE/i).filter(s=>s.trim());
+      let shtml = '';
+      if(scenes.length>1) {
+        scenes.forEach(s => {
+          const lines = s.split('\n');
+          const hdr = lines[0].replace(/^\d+\s*[-–]?\s*/,'').replace(/\]/,'').trim();
+          const visual = lines.find(l=>/^VISUAL:/i.test(l))?.replace(/^VISUAL:\s*/i,'') || '';
+          const narasi = lines.filter(l=>/^NARASI:/i.test(l)).map(l=>l.replace(/^NARASI:\s*/i,'')).join(' ');
+          shtml += `<div class="script-scene"><div class="scene-label">🎬 Scene ${hdr}</div>${visual?`<div class="scene-visual">👁 Visual: ${visual}</div>`:''}${narasi?`<div>${narasi}</div>`:''}</div>`;
+        });
+      } else shtml = `<div style="white-space:pre-wrap">${v}</div>`;
+      c.innerHTML += buildSection('🎬','Script Lengkap', `<div class="result-body">${shtml}</div>`, v);
+    }
+  }
+  if(opts.storyboard) {
+    const v = extractSection(text,'STORYBOARD JSON') || extractSection(text,'STORYBOARD');
+    if(v) {
+      try {
+        const jm = v.match(/\[[\s\S]*\]/);
+        if(jm) {
+          const scenes = JSON.parse(jm[0]);
+          let html = '<div class="storyboard-grid">';
+          scenes.forEach(s => {
+            html += `<div class="sb-card"><div class="sb-frame">${s.emoji||'🎬'}</div><div class="sb-info"><div class="sb-time">${s.time||''}</div><div class="sb-desc">${s.visual||''}</div></div></div>`;
+          });
+          html += '</div>';
+          c.innerHTML += buildSection('🖼️','Storyboard', html, null, false);
+        }
+      } catch { c.innerHTML += buildSection('🖼️','Storyboard', `<div class="result-body">${v}</div>`, v); }
+    }
+  }
+  if(opts.hashtag) {
+    const v = extractSection(text,'HASHTAG');
+    if(v) {
+      const tags = v.match(/#\w+/g)||[];
+      let html = '<div class="hashtag-cloud">';
+      tags.forEach(t => html += `<span class="hashtag" onclick="copyText('${t}',this)">${t}</span>`);
+      html += '</div>';
+      c.innerHTML += buildSection('#️⃣',`Hashtag (${tags.length})`, html, tags.join(' '), true, '📋 Salin Semua');
+    }
+  }
+
+  if(!c.innerHTML) c.innerHTML = `<div class="result-section"><div class="result-body">${text}</div></div>`;
+  c.classList.add('show');
+  c.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function buildSection(icon, title, bodyHTML, copyText, showCopy=true, copyLabel='📋 Salin') {
+  const copyBtn = showCopy && copyText ? `<button class="copy-btn" onclick="copyText(\`${copyText?.replace(/`/g,'\\`')||''}\`,this)">${copyLabel}</button>` : '';
+  return `<div class="result-section"><div class="result-header"><div class="result-title"><span>${icon}</span> ${title}</div>${copyBtn}</div>${bodyHTML}</div>`;
+}
+
+// ===== GENERATE VIDEO =====
+async function generateVideo() {
+  const topic = document.getElementById('videoTopic').value.trim();
+  if (!topic) { showError('videoError','⚠️ Isi deskripsi video dulu!'); return; }
+
+  const sceneCount = document.getElementById('sceneCount').value;
+  const ratio = document.getElementById('aspectRatio').value;
+  const vstyle = document.getElementById('visualStyle').value;
+  const dur = document.getElementById('sceneDuration').value;
+  const lang = document.getElementById('videoLang').value;
+
+  if (videoMode === 'runway') {
+    const key = document.getElementById('runwayKey').value.trim();
+    if (!key) { showError('videoError','⚠️ Masukkan RunwayML API Key dulu!'); return; }
+  }
+
+  document.getElementById('videoBtn').disabled = true;
+  document.getElementById('videoLoading').classList.add('show');
+  document.getElementById('videoResults').classList.remove('show');
+  document.getElementById('videoResults').innerHTML = '';
+  document.getElementById('videoLoadingText').textContent = videoMode==='runway' ? 'AI sedang generate video (bisa 1-2 menit)...' : 'Membuat storyboard & preview video...';
+  animateSteps('vstep', [1,2,3,4]);
+
+  const prompt = `Kamu adalah video content creator. Buat storyboard video lengkap dalam bahasa ${lang}:
+Topik: ${topic}
+Jumlah scene: ${sceneCount}
+Rasio: ${ratio}
+Gaya visual: ${vstyle}
+Durasi per scene: ${dur} detik
+
+### STORYBOARD VIDEO JSON:
+Buat JSON array ${sceneCount} scene dengan format TEPAT ini:
+[
+  {
+    "scene": 1,
+    "time": "0:00-0:${dur}",
+    "emoji": "🎬",
+    "title": "judul scene singkat",
+    "visual": "deskripsi detail visual dan komposisi gambar",
+    "narasi": "teks narasi yang diucapkan",
+    "textOverlay": "teks besar yang ditampilkan di video",
+    "bgColor": "#hex warna background",
+    "textColor": "#hex warna teks"
+  }
+]
+Gunakan warna yang sesuai gaya ${vstyle}. Hanya output JSON murni dari [ sampai ].
+
+### PANDUAN PRODUKSI:
+Berikan panduan singkat cara memproduksi video ini menggunakan CapCut atau DaVinci Resolve, langkah demi langkah.`;
+
+  try {
+    const text = await callClaude(prompt, 2000);
+    renderVideoResult(text, topic, ratio, dur, sceneCount);
+  } catch(e) {
+    showError('videoError','❌ '+e.message);
+  } finally {
+    document.getElementById('videoBtn').disabled = false;
+    document.getElementById('videoLoading').classList.remove('show');
+  }
+}
+
+function renderVideoResult(text, topic, ratio, dur, sceneCount) {
+  const c = document.getElementById('videoResults');
+  c.innerHTML = '';
+
+  // Extract storyboard JSON
+  let scenes = [];
+  try {
+    const jm = text.match(/\[[\s\S]*?\]/s) || text.match(/\[[\s\S]*\]/);
+    if(jm) scenes = JSON.parse(jm[0]);
+  } catch {}
+
+  const guide = extractSection(text,'PANDUAN PRODUKSI');
+  const isVertical = ratio === '9:16';
+  const totalDur = parseInt(dur) * parseInt(sceneCount);
+
+  // Video info card
+  c.innerHTML += `
+    <div class="result-section">
+      <div class="result-header"><div class="result-title">🎬 Rencana Video</div></div>
+      <div class="result-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding:16px">
+        <div style="background:var(--surface2);padding:12px;border-radius:10px;text-align:center">
+          <div style="font-size:1.5rem">📐</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Rasio</div>
+          <div style="font-weight:600;font-size:0.9rem">${ratio}</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;border-radius:10px;text-align:center">
+          <div style="font-size:1.5rem">🎞️</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Scene</div>
+          <div style="font-weight:600;font-size:0.9rem">${sceneCount} scene</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;border-radius:10px;text-align:center">
+          <div style="font-size:1.5rem">⏱️</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Durasi Total</div>
+          <div style="font-weight:600;font-size:0.9rem">~${totalDur} detik</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px;border-radius:10px;text-align:center">
+          <div style="font-size:1.5rem">${videoMode==='runway'?'🚀':'🖼️'}</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">Mode</div>
+          <div style="font-weight:600;font-size:0.9rem">${videoMode==='runway'?'RunwayML':'Slideshow'}</div>
+        </div>
+      </div>
+    </div>`;
+
+  // Slideshow preview
+  if(scenes.length > 0) {
+    const previewStyle = isVertical
+      ? 'grid-template-columns: repeat(auto-fill, minmax(110px, 1fr))'
+      : 'grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))';
+    const frameStyle = isVertical ? 'aspect-ratio:9/16;min-height:160px' : 'aspect-ratio:16/9;min-height:90px';
+
+    let html = `<div style="padding:16px"><div style="${previewStyle};display:grid;gap:10px">`;
+    scenes.forEach(s => {
+      const bg = s.bgColor || '#1a1a2e';
+      const tc = s.textColor || '#ffffff';
+      html += `
+        <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+          <div style="${frameStyle};background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;text-align:center;position:relative">
+            <div style="font-size:${isVertical?'2rem':'1.5rem'};margin-bottom:8px">${s.emoji||'🎬'}</div>
+            <div style="font-size:${isVertical?'0.75rem':'0.65rem'};font-weight:700;color:${tc};line-height:1.3">${s.textOverlay||s.title||''}</div>
+            <div style="position:absolute;bottom:6px;right:6px;font-size:0.6rem;color:${tc};opacity:0.6">${s.time||''}</div>
+          </div>
+          <div style="padding:8px;background:var(--surface2)">
+            <div style="font-size:0.68rem;color:var(--accent);font-weight:600;margin-bottom:3px">Scene ${s.scene}</div>
+            <div style="font-size:0.7rem;color:var(--muted);line-height:1.3">${s.visual?.substring(0,60)||''}${(s.visual?.length||0)>60?'...':''}</div>
+          </div>
+        </div>`;
+    });
+    html += '</div></div>';
+    c.innerHTML += `<div class="result-section"><div class="result-header"><div class="result-title">🖼️ Preview Slideshow (${scenes.length} scene)</div></div>${html}</div>`;
+
+    // Script narasi
+    let scriptHtml = '<div class="result-body">';
+    scenes.forEach(s => {
+      scriptHtml += `<div class="script-scene"><div class="scene-label">🎬 Scene ${s.scene} — ${s.time}</div><div class="scene-visual">👁 Visual: ${s.visual}</div><div>${s.narasi}</div></div>`;
+    });
+    scriptHtml += '</div>';
+    const fullScript = scenes.map(s=>`Scene ${s.scene} [${s.time}]\nVisual: ${s.visual}\nNarasi: ${s.narasi}`).join('\n\n');
+    c.innerHTML += `<div class="result-section"><div class="result-header"><div class="result-title">📜 Script Narasi</div><button class="copy-btn" onclick="copyText(\`${fullScript.replace(/`/g,'\\`')}\`,this)">📋 Salin</button></div>${scriptHtml}</div>`;
+  }
+
+  // Panduan produksi
+  if(guide) {
+    c.innerHTML += `<div class="result-section"><div class="result-header"><div class="result-title">🔧 Panduan Produksi Video</div></div><div class="result-body">${guide}</div></div>`;
+  }
+
+  // CTA untuk RunwayML
+  if(videoMode === 'runway') {
+    c.innerHTML += `
+      <div class="result-section" style="border-color:rgba(255,61,90,0.3)">
+        <div class="result-header" style="background:rgba(255,61,90,0.08)">
+          <div class="result-title">🚀 Generate dengan RunwayML</div>
+        </div>
+        <div class="result-body">
+          <p style="margin-bottom:12px">Storyboard sudah siap! Gunakan deskripsi visual di atas untuk generate video di RunwayML:</p>
+          <ol style="padding-left:20px;line-height:2">
+            <li>Buka <a href="https://app.runwayml.com" target="_blank" style="color:#a78bfa">app.runwayml.com</a></li>
+            <li>Pilih <strong>Text to Video</strong> atau <strong>Image to Video</strong></li>
+            <li>Copy-paste deskripsi visual tiap scene dari storyboard di atas</li>
+            <li>Generate dan download tiap scene</li>
+            <li>Gabungkan di CapCut atau DaVinci Resolve</li>
+          </ol>
+        </div>
+      </div>`;
+  }
+
+  c.classList.add('show');
+  c.scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+</body>
+</html>

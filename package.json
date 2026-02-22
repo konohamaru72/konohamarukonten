@@ -1,0 +1,10 @@
+{
+  "name": "contentai",
+  "version": "1.0.0",
+  "description": "AI Content Generator untuk YouTube & TikTok",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {}
+}
