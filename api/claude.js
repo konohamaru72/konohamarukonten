@@ -1,25 +1,15 @@
-// api/claude.js — Backend API handler (Vercel Serverless Function)
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { prompt, max_tokens = 3000 } = req.body;
-
-  if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
-  }
+  if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-  }
+  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -46,7 +36,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ text });
 
   } catch (error) {
-    console.error('Error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
